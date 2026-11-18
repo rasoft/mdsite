@@ -12,6 +12,10 @@
       padding: 36px 44px 80px;
     }
 
+    body.full-width .content-wrapper {
+      max-width: none;
+    }
+
     /* ---- Markdown ---- */
     .md h1 {
       font-size: 30px;

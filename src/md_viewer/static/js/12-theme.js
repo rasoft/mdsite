@@ -39,3 +39,21 @@ function toggleTheme() { applyTheme(_currentTheme === 'dark' ? 'light' : 'dark')
 // Apply theme on load (uses OS preference if no saved preference)
 applyTheme(_currentTheme);
 
+const WIDTH_KEY = 'md-viewer-content-width';
+let _contentWidth = localStorage.getItem(WIDTH_KEY) === 'full' ? 'full' : 'limit';
+function applyContentWidth(mode) {
+  _contentWidth = mode === 'full' ? 'full' : 'limit';
+  document.body.classList.toggle('full-width', _contentWidth === 'full');
+  const btn = document.getElementById('widthToggle');
+  if (btn) {
+    const next = _contentWidth === 'full' ? 'limit' : 'full';
+    btn.textContent = next;
+    btn.title = _contentWidth === 'full' ? 'Limit content width' : 'Use full content width';
+  }
+  localStorage.setItem(WIDTH_KEY, _contentWidth);
+}
+function toggleContentWidth() {
+  applyContentWidth(_contentWidth === 'full' ? 'limit' : 'full');
+}
+applyContentWidth(_contentWidth);
+
