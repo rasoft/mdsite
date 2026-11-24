@@ -19,7 +19,7 @@ function showDashboard(folder) {
   document.getElementById('editorWrapper').style.display = 'none';
   const tocContainer = document.getElementById('tocContainer');
   tocContainer.innerHTML = '';
-  const useRight = _tocPosition === 'right' && window.innerWidth > 900;
+  const useRight = rightPanelActive();
   if (useRight) {
     tocContainer.innerHTML = `
       <div class="toc-toolbar">

@@ -9,7 +9,10 @@ document.body.addEventListener('scroll', () => {
 document.addEventListener('click', (e) => {
   if (window.innerWidth <= 900) {
     const sb = document.getElementById('sidebar'), tg = document.querySelector('.menu-toggle');
-    if (!sb.contains(e.target) && !tg.contains(e.target)) sb.classList.remove('open');
+    if (!sb.contains(e.target) && !tg.contains(e.target) && !e.target.closest('#leftSidebarToggle')) {
+      sb.classList.remove('open');
+      updateSidebarButtons();
+    }
   }
 });
 

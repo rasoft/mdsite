@@ -2,13 +2,21 @@ let tocAutoMode = true; // auto-open/close TOC groups on scroll
 let tocHeadings = [];   // [{el, slug, level, tocEl, groupEl, childrenEl}]
 
 let _sidebarTocExpanded = false;
+let _tocPinnedEl = null; // heading clicked in the TOC; keep it highlighted until scroll settles
+let _tocPinRestTop = null; // scroll position where a short trailing heading came to rest
+let _tocPinTimer = 0;
+let _tocActiveIdx = -1;
 
 function buildToc() {
+  _tocPinnedEl = null;
+  _tocPinRestTop = null;
+  clearTimeout(_tocPinTimer);
+  _tocActiveIdx = -1;
   const container = document.getElementById('tocContainer');
   container.innerHTML = '';
   tocHeadings = [];
 
-  const inRightPanel = _tocPosition === 'right' && window.innerWidth > 900;
+  const inRightPanel = rightPanelActive();
 
   // Toolbar with collapsible "On this page" header
   const toolbar = document.createElement('div');
@@ -127,6 +135,84 @@ function buildToc() {
   tocAutoMode = true;
 }
 
+function tocActivationOffset() {
+  const sample = tocHeadings[0]?.el || document.querySelector('.md h2, .md h3');
+  const margin = sample ? parseFloat(getComputedStyle(sample).scrollMarginTop) || 0 : 0;
+  // scrollIntoView parks a heading at its scroll-margin. The spy line has to
+  // sit slightly past that, or the heading above stays highlighted.
+  return margin + 8;
+}
+
+function scrollTocItemIntoView(el) {
+  const scroller = el.closest('.toc-content');
+  if (!scroller) return;
+  const elRect = el.getBoundingClientRect();
+  const scRect = scroller.getBoundingClientRect();
+  if (elRect.top < scRect.top) {
+    scroller.scrollTop -= scRect.top - elRect.top;
+  } else if (elRect.bottom > scRect.bottom) {
+    scroller.scrollTop += elRect.bottom - scRect.bottom;
+  }
+}
+
+function setTocActive(entry) {
+  tocHeadings.forEach(t => t.tocEl.classList.remove('active'));
+  if (!entry) {
+    _tocActiveIdx = -1;
+    return;
+  }
+  entry.tocEl.classList.add('active');
+
+  if (entry.level === 3 && entry.parentH2) {
+    entry.parentH2.tocEl.classList.add('active');
+  }
+
+  if (tocAutoMode) {
+    const activeH2 = entry.level === 2 ? entry : (entry.parentH2 || null);
+    tocHeadings.forEach(t => {
+      if (t.level !== 2) return;
+      const open = t === activeH2;
+      t.tocEl.classList.toggle('collapsed', !open);
+      if (t.childrenEl) t.childrenEl.classList.toggle('collapsed', !open);
+    });
+  }
+
+  const idx = tocHeadings.indexOf(entry);
+  if (idx !== _tocActiveIdx) {
+    _tocActiveIdx = idx;
+    scrollTocItemIntoView(entry.tocEl);
+  }
+}
+
+function settleTocPin() {
+  clearTimeout(_tocPinTimer);
+  if (!_tocPinnedEl || !_tocPinnedEl.isConnected) {
+    _tocPinnedEl = null;
+    _tocPinRestTop = null;
+    updateScrollSpy();
+    return;
+  }
+  const offset = tocActivationOffset();
+  const top = _tocPinnedEl.getBoundingClientRect().top;
+  const maxScroll = Math.max(0, document.body.scrollHeight - document.body.clientHeight);
+  const atBottom = document.body.scrollTop >= maxScroll - 2;
+  if (top <= offset) {
+    _tocPinnedEl = null;
+    _tocPinRestTop = null;
+    updateScrollSpy();
+    return;
+  }
+  // Short trailing section: the page cannot bring this heading up to the
+  // spy line. Leave the click highlight in place until the user scrolls away.
+  if (atBottom) {
+    _tocPinRestTop = document.body.scrollTop;
+    const pinned = tocHeadings.find(t => t.el === _tocPinnedEl);
+    if (pinned) setTocActive(pinned);
+    return;
+  }
+  _tocPinTimer = setTimeout(settleTocPin, 200);
+}
+
 function tocScrollTo(h) {
   // Expand content section if collapsed
   if (h.classList.contains('collapsed')) {
@@ -134,10 +220,24 @@ function tocScrollTo(h) {
     const body = h.nextElementSibling;
     if (body && body.classList.contains('section-body')) body.classList.remove('collapsed');
   }
+  // Hold this heading as current while the smooth scroll is in flight.
+  // Otherwise an in-between section steals the highlight, and the final
+  // scroll event often never arrives to put it back.
+  _tocPinnedEl = h;
+  _tocPinRestTop = null;
+  clearTimeout(_tocPinTimer);
+  const entry = tocHeadings.find(t => t.el === h);
+  if (entry) setTocActive(entry);
   h.scrollIntoView({ behavior: 'smooth', block: 'start' });
   h.classList.add('highlight-flash');
   setTimeout(() => h.classList.remove('highlight-flash'), 1500);
+  _tocPinTimer = setTimeout(settleTocPin, 1500);
 }
+
+document.body.addEventListener('scrollend', () => {
+  if (!_tocPinnedEl) return;
+  settleTocPin();
+});
 
 function tocCollapseAll() {
   tocAutoMode = true;
@@ -156,47 +256,34 @@ function tocExpandAll() {
 function updateScrollSpy() {
   if (tocHeadings.length === 0) return;
 
-  const scrollY = window.scrollY;
-  const offset = 100;
+  if (_tocPinnedEl && _tocPinnedEl.isConnected) {
+    const movedAway = _tocPinRestTop !== null
+      && Math.abs(document.body.scrollTop - _tocPinRestTop) > 2;
+    if (!movedAway) {
+      const pinned = tocHeadings.find(t => t.el === _tocPinnedEl);
+      if (pinned) {
+        setTocActive(pinned);
+        return;
+      }
+    }
+    _tocPinnedEl = null;
+    _tocPinRestTop = null;
+  }
 
-  // Find the current heading: last heading whose top <= scrollY + offset
+  const offset = tocActivationOffset();
+
+  // Find the current heading: last heading whose top has crossed the spy line.
   let activeIdx = -1;
   for (let i = tocHeadings.length - 1; i >= 0; i--) {
     const rect = tocHeadings[i].el.getBoundingClientRect();
     if (rect.top <= offset) { activeIdx = i; break; }
   }
 
-  // Clear all active
-  tocHeadings.forEach(t => t.tocEl.classList.remove('active'));
-
-  if (activeIdx < 0) return;
-
-  const active = tocHeadings[activeIdx];
-  active.tocEl.classList.add('active');
-
-  // Also highlight parent H2 if active is H3
-  if (active.level === 3 && active.parentH2) {
-    active.parentH2.tocEl.classList.add('active');
+  if (activeIdx < 0) {
+    setTocActive(null);
+    return;
   }
 
-  // Auto-open/close TOC groups when in auto mode
-  if (tocAutoMode) {
-    // Find which H2 group is active
-    let activeH2 = active.level === 2 ? active : (active.parentH2 || null);
-
-    tocHeadings.forEach(t => {
-      if (t.level !== 2) return;
-      if (t === activeH2) {
-        t.tocEl.classList.remove('collapsed');
-        if (t.childrenEl) t.childrenEl.classList.remove('collapsed');
-      } else {
-        t.tocEl.classList.add('collapsed');
-        if (t.childrenEl) t.childrenEl.classList.add('collapsed');
-      }
-    });
-  }
-
-  // Scroll active TOC item into view in sidebar
-  active.tocEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  setTocActive(tocHeadings[activeIdx]);
 }
 

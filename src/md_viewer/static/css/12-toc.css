@@ -131,6 +131,25 @@
       left: 44px;
     }
 
+    body.sidebar-hidden .sidebar {
+      display: none;
+    }
+
+    body.sidebar-hidden .main,
+    body.sidebar-hidden .tab-bar,
+    body.sidebar-hidden .reading-progress {
+      margin-left: 0;
+      left: 0;
+    }
+
+    body.sidebar-hidden .infile-search-bar {
+      left: 50%;
+    }
+
+    body.sidebar-hidden.toc-right .infile-search-bar {
+      left: calc(50% - 120px);
+    }
+
     @media (max-width: 900px) {
       body.sidebar-collapsed .sidebar {
         width: var(--sidebar-w);

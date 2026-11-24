@@ -8,7 +8,10 @@ function escapeJsString(s) {
   return String(s).replace(/[\\'\n\r<]/g, c => ({ '\\': '\\\\', "'": "\\'", '\n': '\\n', '\r': '\\r', '<': '\\x3C' }[c]));
 }
 
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  updateSidebarButtons();
+}
 
 function interceptMdLinks(container, currentFilePath) {
   container.querySelectorAll('a[href]').forEach(a => {

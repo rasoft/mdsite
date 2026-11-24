@@ -68,6 +68,64 @@ function toggleSidebarCollapse() {
   document.body.classList.toggle('sidebar-collapsed', _sidebarCollapsed);
 }
 
+// ---- Hide / show left explorer and right TOC ----
+let _leftHidden = localStorage.getItem('mdviewer_sidebar_hidden') === 'true';
+let _rightHidden = localStorage.getItem('mdviewer_right_hidden') === 'true';
+
+function rightPanelActive() {
+  return _tocPosition === 'right' && !_rightHidden && window.innerWidth > 900;
+}
+
+function updateSidebarButtons() {
+  const leftBtn = document.getElementById('leftSidebarToggle');
+  const rightBtn = document.getElementById('rightSidebarToggle');
+  const leftShown = window.innerWidth <= 900
+    ? document.getElementById('sidebar').classList.contains('open')
+    : !document.body.classList.contains('sidebar-hidden');
+  if (leftBtn) {
+    leftBtn.textContent = leftShown ? '隐藏左' : '显示左';
+    leftBtn.title = leftShown ? '隐藏左边栏' : '显示左边栏';
+  }
+  if (rightBtn) {
+    const rightShown = rightPanelActive();
+    rightBtn.textContent = rightShown ? '隐藏右' : '显示右';
+    rightBtn.title = rightShown ? '隐藏右边栏' : '显示右边栏';
+  }
+}
+
+function applyPanelVisibility() {
+  const isMobile = window.innerWidth <= 900;
+  document.body.classList.toggle('sidebar-hidden', _leftHidden && !isMobile);
+  document.body.classList.toggle('toc-right', rightPanelActive());
+  moveTocToPosition();
+  updateSidebarButtons();
+}
+
+function toggleLeftSidebar() {
+  if (window.innerWidth <= 900) {
+    document.getElementById('sidebar').classList.toggle('open');
+    updateSidebarButtons();
+    return;
+  }
+  _leftHidden = !_leftHidden;
+  localStorage.setItem('mdviewer_sidebar_hidden', String(_leftHidden));
+  applyPanelVisibility();
+}
+
+function toggleRightSidebar() {
+  if (rightPanelActive()) {
+    _rightHidden = true;
+  } else {
+    _rightHidden = false;
+    if (_tocPosition !== 'right') {
+      _tocPosition = 'right';
+      localStorage.setItem('mdviewer_toc_position', 'right');
+    }
+  }
+  localStorage.setItem('mdviewer_right_hidden', String(_rightHidden));
+  applyPanelVisibility();
+}
+
 // ---- TOC right panel collapse ----
 let _tocCollapsed = localStorage.getItem('mdviewer_toc_collapsed') === 'true';
 function toggleTocCollapse() {
@@ -82,11 +140,7 @@ function initSettings() {
   if (_sidebarCollapsed) document.body.classList.add('sidebar-collapsed');
   if (_tocCollapsed) document.body.classList.add('toc-collapsed');
   document.body.classList.add('no-active-file');
-  const isMobile = window.innerWidth <= 900;
-  if (_tocPosition === 'right' && !isMobile) {
-    document.body.classList.add('toc-right');
-    moveTocToPosition();
-  }
+  applyPanelVisibility();
 }
 
 function moveTocToPosition() {
@@ -94,7 +148,7 @@ function moveTocToPosition() {
   const rightPanel = document.getElementById('tocRightPanel');
   const sidebar = document.getElementById('sidebar');
   if (!tocContainer || !rightPanel || !sidebar) return;
-  const useRight = _tocPosition === 'right' && window.innerWidth > 900;
+  const useRight = rightPanelActive();
   if (useRight && !rightPanel.contains(tocContainer)) {
     rightPanel.appendChild(tocContainer);
   } else if (!useRight && !sidebar.contains(tocContainer)) {
@@ -172,14 +226,14 @@ function applyIconStyle(style) {
 function applyTocPosition(pos) {
   _tocPosition = pos;
   localStorage.setItem('mdviewer_toc_position', pos);
-  const isMobile = window.innerWidth <= 900;
-  document.body.classList.toggle('toc-right', pos === 'right' && !isMobile);
-  moveTocToPosition();
+  if (pos === 'right') {
+    _rightHidden = false;
+    localStorage.setItem('mdviewer_right_hidden', 'false');
+  }
+  applyPanelVisibility();
 }
 
 window.addEventListener('resize', () => {
-  const isMobile = window.innerWidth <= 900;
-  document.body.classList.toggle('toc-right', _tocPosition === 'right' && !isMobile);
-  moveTocToPosition();
+  applyPanelVisibility();
 });
 
