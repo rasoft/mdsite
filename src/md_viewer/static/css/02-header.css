@@ -23,6 +23,13 @@
       font-size: 15px;
       color: var(--text-heading);
       white-space: nowrap;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .header-logo #siteTitle {
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .header-logo .icon {

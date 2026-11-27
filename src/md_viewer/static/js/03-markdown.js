@@ -40,11 +40,22 @@ function buildFileIconSvg(idx) {
   return `<svg width="48" height="56" viewBox="0 0 48 56" fill="none"><path d="M4 4a4 4 0 0 1 4-4h22l14 14v38a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V4z" fill="url(#fg${idx})"/><path d="M26 0l14 14H30a4 4 0 0 1-4-4V0z" fill="rgba(255,255,255,0.25)"/><line x1="14" y1="28" x2="34" y2="28" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round"/><line x1="14" y1="34" x2="34" y2="34" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round"/><line x1="14" y1="40" x2="28" y2="40" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round"/><defs><linearGradient id="fg${idx}" x1="0" y1="0" x2="48" y2="56" gradientUnits="userSpaceOnUse"><stop stop-color="${colors[0]}"/><stop offset="1" stop-color="${colors[1]}"/></linearGradient></defs></svg>`;
 }
 
+function applySiteTitle(title) {
+  const text = (title && String(title).trim()) || 'Markdown Viewer';
+  const el = document.getElementById('siteTitle');
+  if (el) {
+    el.textContent = text;
+    el.title = text;
+  }
+  document.title = text;
+}
+
 async function init() {
   try {
     const resp = await fetch('/api/files');
     const data = await resp.json();
     FILES = data.files;
+    applySiteTitle(data.site_title);
     if (data.readonly) {
       document.getElementById('editBtn').style.display = 'none';
     }

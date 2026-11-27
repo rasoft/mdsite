@@ -20,7 +20,7 @@ from watchdog.observers import Observer
 
 from md_viewer import __version__
 
-from .scanner import scan_md_files
+from .scanner import scan_md_files, site_title
 
 _STATIC_DIR = Path(__file__).parent / "static"
 
@@ -220,7 +220,12 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
 
         if path == "/api/files":
             files = scan_md_files(self.root_dir)
-            payload = {"root": str(self.root_dir), "files": files, "readonly": self.readonly}
+            payload = {
+                "root": str(self.root_dir),
+                "files": files,
+                "readonly": self.readonly,
+                "site_title": site_title(self.root_dir),
+            }
             data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
             self._send_gzip(data, "application/json")
             return

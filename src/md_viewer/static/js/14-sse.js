@@ -27,6 +27,7 @@ function connectSSE() {
     try {
       const resp = await fetch('/api/files');
       const data = await resp.json();
+      applySiteTitle(data.site_title);
       const newPaths = data.files.map(f => f.path).join(',');
       const oldPaths = FILES.map(f => f.path).join(',');
       if (newPaths !== oldPaths) {
